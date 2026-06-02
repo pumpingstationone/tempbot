@@ -28,13 +28,10 @@ bot = commands.Bot(description="Temp Bot", command_prefix="!", intents=intents)
 
 # This is where we build the text that will be sent back to the requestor.
 def build_response(request):
-    # This sub-function will loop through the array and return the first element
-    # value where the length of the string is greater than 0
-    def find_area(parts_array):
-        for part in parts_array:
-            if len(part) > 0:
-                return part
-        return ""
+    # Normalize an area string for comparison by lowercasing and removing spaces
+    # so that "Small Metals", "small metals", and "smallmetals" all match
+    def normalize(s):
+        return s.lower().replace(" ", "")
 
     def build_help_text():
         help_response = "Hmm, you want to enter `!temp <area>` (case insensitive).\n_I currently know of the following areas:_ "
@@ -79,12 +76,13 @@ def build_response(request):
         areas = list(temp_dict.data.keys())
         for area in areas:
             # Special ... if they want everything, we build that here
-            if area_requested == "all":
+            if normalize(area_requested) == "all":
                 temp_text += format_temp(area, temp_dict[area])
                 # And get ready for the next line
                 temp_text += "\n"
-            # Did we find the specific area?
-            elif area == area_requested:
+            # Did we find the specific area? Compare normalized versions so
+            # capitalization and spaces don't matter
+            elif normalize(area) == normalize(area_requested):
                 # Ah, we did, so we'll build the response by
                 # formatting the json that holds the temperature,
                 # humidity, etc.
@@ -106,13 +104,9 @@ def build_response(request):
     # We split on the space and get an array of parts we're going to work with
     req_parts = request.split(" ")
     # req_parts[0] is the trigger word ('!temp').
-    # We may or may not have another word after the trigger word, and
-    # we don't know how many spaces are between element 0 and the word.
-    # Soooo we have a sub-function that looks to see if we can find
-    # something. _If_ we do find a word, we'll try to find that in the
-    # dictionary. Otherwise, if we can't find the word, or there's nothing,
-    # we'll return the help text
-    area = find_area(req_parts[1:])
+    # Everything after it is joined back into a single string and stripped,
+    # so spacing between words and around the edges doesn't matter.
+    area = " ".join(req_parts[1:]).strip()
 
     # Now let's see if we even have anything to work with
     if len(area) == 0:
