@@ -169,45 +169,42 @@ temp_dict = TempDict()
 ## MQTT Section
 ##########################################################################################
 
-
-def handle_temp_message(message):
-    # The message we get here looks like:
-    #   "MQTT publish: topic 'ps1/zigbee2mqtt/tempsense-lasers', payload '{\"battery\":100,\"humidity\":24.09,\"linkquality\":65,\"temperature\":17.39,\"voltage\":3100}'"
-    # which we split on ', payload' so the resulting array has
-    # the area in msg_parts[0], and the actual payload in msg_parts[1]
-    # that we will convert to json
-    msg_parts = message.split(", payload")
-
-    # The part that will give us the sensor name
-    # This crazy line is simply to get us directly to the sensor
-    # name, skipping all the intermediate parts
-    area = msg_parts[0].split("'")[1::2][0].split("/")[2].split("-")[1]
-    # And now the actual json payload
-    payload = json.loads(msg_parts[1].strip().replace("'", ""))
-
-    # And add it to our dictionary
-    temp_dict[area] = payload
-
-    print(f"AREA: {area} ==> {temp_dict[area]}")
+# Maps THS sensor IDs to human-readable area names
+SENSOR_AREAS = {
+    "THS-Woodshop-01":    "Woodshop",
+    "THS-SmallMetals-01": "Small Metals",
+    "THS-ServerRoom-01":  "Server Room",
+    "THS-Lounge-01":      "Lounge",
+    "THS-Kitchen-01":     "Kitchen",
+    "THS-HotMetals-01":   "Hot Metals",
+    "THS-General-01":     "General",
+    "THS-Entryway-01":    "Entryway",
+    "THS-Electronics-01": "Electronics",
+    "THS-Dock-01":        "Dock",
+    "THS-ColdMetals-01":  "Cold Metals",
+    "THS-CNC-01":         "CNC",
+    "THS-Catwalk-01":     "Catwalk",
+    "THS-BoilerRoom-01":  "Boiler Room",
+    "THS-Arts-01":        "Arts",
+}
 
 
 # This function is invoked by the MQTT library when we get
 # a message
 def on_message(client, userdata, message):
     try:
-        payload = str(message.payload.decode())
-        # convert string to a dictionary
-        payload_dict = json.loads(payload)
-        # There are lots of different types of payloads, we
-        # want the one that explicitly has the "message" key
-        # because we need to know what sensor we're working with,
-        # and if that key exists, then we only want the messages
-        # where "tempsense" is in the text, as those are the messages
-        # we're working with
-        if "message" in payload_dict and "tempsense" in payload_dict["message"]:
-            handle_temp_message(payload_dict["message"])
+        # Topic format: ps1/zigbee2mqtt/THS-<Area>-01
+        sensor_id = message.topic.split("/")[-1]
+        if sensor_id not in SENSOR_AREAS:
+            return
+
+        area = SENSOR_AREAS[sensor_id]
+        payload = json.loads(message.payload.decode())
+        temp_dict[area] = payload
+
+        print(f"AREA: {area} ==> {temp_dict[area]}")
     except Exception as e:
-        print("Got a message error: {str(e)}")
+        print(f"Got a message error: {str(e)}")
 
 
 def setup_mqtt_reader():
