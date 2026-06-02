@@ -171,11 +171,6 @@ temp_dict = TempDict()
 
 
 def handle_temp_message(message):
-    # The message we get here looks like:
-    #   "MQTT publish: topic 'ps1/zigbee2mqtt/tempsense-lasers', payload '{\"battery\":100,\"humidity\":24.09,\"linkquality\":65,\"temperature\":17.39,\"voltage\":3100}'"
-    # which we split on ', payload' so the resulting array has
-    # the area in msg_parts[0], and the actual payload in msg_parts[1]
-    # that we will convert to json
     msg_parts = message.split(", payload")
 
     # The part that will give us the sensor name
