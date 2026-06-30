@@ -4,6 +4,7 @@ import threading
 import collections
 import json
 import configparser
+from datetime import datetime
 import paho.mqtt.client as mqtt
 
 import discord
@@ -59,13 +60,23 @@ def build_response(request):
                 # And round our calculation to a whole number
                 return round(fahrenheit)
 
+            # Turns timestamp into string like "10:57 PM 6/29/26".
+            def format_last_seen(iso_timestamp):
+                dt = datetime.fromisoformat(iso_timestamp)
+                hour = dt.hour % 12
+                if hour == 0:
+                    hour = 12
+                meridiem = "AM" if dt.hour < 12 else "PM"
+                return f"{hour}:{dt.minute:02d} {meridiem} {dt.month}/{dt.day}/{dt:%y}"
+
             # Get our values...
             cel_temp = temp_json["temperature"]
             fah_temp = celsius_to_fahrenheit(cel_temp)
             humidity = temp_json["humidity"]
+            last_seen = format_last_seen(temp_json["last_seen"])
 
             # And now let's build our string
-            area_temp_text = f"The temperature in `{stored_area}` is *{fah_temp}* F (*{cel_temp}* C). The humidty is *{humidity}*."
+            area_temp_text = f"The temperature in `{stored_area}` as of {last_seen} is *{fah_temp}* F (*{cel_temp}* C). The humidty is *{humidity}*."
 
             return area_temp_text
 
@@ -83,14 +94,12 @@ def build_response(request):
             # Did we find the specific area? Compare normalized versions so
             # capitalization and spaces don't matter
             elif normalize(area) == normalize(area_requested):
-                # Ah, we did, so we'll build the response by
-                # formatting the json that holds the temperature,
-                # humidity, etc.
+                # We did, so we'll build the response by formatting the json.
                 temp_text = format_temp(area, temp_dict[area])
 
         # Did we find the appropriate area?
         if len(temp_text) == 0:
-            # No we didn't, so we'll give them the help text.
+            # We didn't, so we'll give the help text.
             temp_text = build_help_text()
 
         return temp_text
