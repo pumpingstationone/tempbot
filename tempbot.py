@@ -27,15 +27,22 @@ intents = discord.Intents.all()
 bot = commands.Bot(description="Temp Bot", command_prefix="!", intents=intents)
 
 
+@bot.event
+async def on_ready():
+    # Sync the slash commands with Discord
+    await bot.tree.sync()
+    print(f"Logged in as {bot.user}, slash commands synced.")
+
+
 # This is where we build the text that will be sent back to the requestor.
-def build_response(request):
+def build_response(area_requested):
     # Normalize an area string for comparison by lowercasing and removing spaces
     # so that "Small Metals", "small metals", and "smallmetals" all match
     def normalize(s):
         return s.lower().replace(" ", "")
 
     def build_help_text():
-        help_response = "Hmm, you want to enter `!temp <area>` (case insensitive).\n_I currently know of the following areas:_ "
+        help_response = "Hmm, you want to enter `/temp <area>` (case insensitive).\n_I currently know of the following areas:_ "
         # Now get all the areas we know about
         areas = list(temp_dict.data.keys())
         area_text = ""
@@ -45,7 +52,7 @@ def build_response(request):
         # And, uh, remove the last comma
         help_response += area_text[:-1]
         help_response += (
-            "\nYou can also type `!temp all` to get the temperatures in all areas"
+            "\nYou can also type `/temp all` to get the temperatures in all areas"
         )
         return help_response
 
@@ -104,20 +111,13 @@ def build_response(request):
 
         return temp_text
 
-    print(f"Got this request: {request}")
+    print(f"Got this request: {area_requested}")
 
     # This is what we're gonna send back
     response = ""
 
-    # First let's see if the request contains a specific area or the magic word "all"
-    # We split on the space and get an array of parts we're going to work with
-    req_parts = request.split(" ")
-    # req_parts[0] is the trigger word ('!temp').
-    # Everything after it is joined back into a single string and stripped,
-    # so spacing between words and around the edges doesn't matter.
-    area = " ".join(req_parts[1:]).strip()
-
     # Now let's see if we even have anything to work with
+    area = (area_requested or "").strip()
     if len(area) == 0:
         # Nope, so let's give them the help text
         response = build_help_text()
@@ -130,15 +130,17 @@ def build_response(request):
     return response
 
 
-# Define a command
-@bot.command(name="temp")
-async def hello_world(ctx):
-    # Get the message that was sent to us
-    request = ctx.message.content
-    # And build the response
-    response = build_response(request)
+# Define the slash command as we want to be a better
+# Discord citizen and not use the old-school !command style
+# which a lot of people who didn't use IRC don't know about.
+# Slash commands are the new hotness (though I still like IRC)
+@bot.tree.command(name="temp", description="Check the temperature for an area")
+@discord.app_commands.describe(area="The area to check (or 'all' for everything)")
+async def temp_command(interaction: discord.Interaction, area: str = ""):
+    # Build the response
+    response = build_response(area)
     # And send it back
-    await ctx.send(response)
+    await interaction.response.send_message(response)
 
 
 ##########################################################################################
@@ -175,21 +177,21 @@ temp_dict = TempDict()
 
 # Maps THS sensor IDs to human-readable area names
 SENSOR_AREAS = {
-    "THS-Woodshop-01":    "Woodshop",
+    "THS-Woodshop-01": "Woodshop",
     "THS-SmallMetals-01": "Small Metals",
-    "THS-ServerRoom-01":  "Server Room",
-    "THS-Lounge-01":      "Lounge",
-    "THS-Kitchen-01":     "Kitchen",
-    "THS-HotMetals-01":   "Hot Metals",
-    "THS-General-01":     "General",
-    "THS-Entryway-01":    "Entryway",
+    "THS-ServerRoom-01": "Server Room",
+    "THS-Lounge-01": "Lounge",
+    "THS-Kitchen-01": "Kitchen",
+    "THS-HotMetals-01": "Hot Metals",
+    "THS-General-01": "General",
+    "THS-Entryway-01": "Entryway",
     "THS-Electronics-01": "Electronics",
-    "THS-Dock-01":        "Dock",
-    "THS-ColdMetals-01":  "Cold Metals",
-    "THS-CNC-01":         "CNC",
-    "THS-Catwalk-01":     "Catwalk",
-    "THS-BoilerRoom-01":  "Boiler Room",
-    "THS-Arts-01":        "Arts",
+    "THS-Dock-01": "Dock",
+    "THS-ColdMetals-01": "Cold Metals",
+    "THS-CNC-01": "CNC",
+    "THS-Catwalk-01": "Catwalk",
+    "THS-BoilerRoom-01": "Boiler Room",
+    "THS-Arts-01": "Arts",
 }
 
 
